@@ -1,48 +1,96 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/netfilter.h>
-#include <linux/vmalloc.h>
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Biche");
-MODULE_DESCRIPTION("Network bandwidth stats per process");
+#include <linux/interrupt.h>
+#include <linux/hrtimer.h>
+#include <linux/sched.h>
 
-static struct nf_hook_ops nfin;
+#define MAX_PORTS  65535
+#define MAX_PROC  32768
+#define SMALL_ARRAY_SIZE  250
 
-static unsigned int hook_func_in(unsigned int hooknum,
-	struct sk_buff *skb, const struct net_device *in,
-	const struct net_device *out, int (*okfn)(struct sk_buff *))
+#include "ports.c"
+#include "process.c"
+
+int loc_ports[MAX_PORTS];
+int rem_ports[MAX_PORTS];
+struct Process proc_list[MAX_PROC];
+
+static struct hrtimer htimer;
+static ktime_t kt_periode;
+
+static void reset_var(void)
 {
-	struct ethhdr *eth;
-	struct iphdr *ip_header;
-
-	/*if (in is not the correct device)
-		return NF_ACCEPT;*/
-
-	eth = (struct ethhdr*)skb_mac_header(skb);
-	ip_header = (struct iphdr *)skb_network_header(skb);
-	printk("src mac %pM, dst mac %pM\n", eth->h_source, eth->h_dest);
-	printk("src IP addr:=%d.%d.%d.%d:%d\n", NIPQUAD(ip_headr->saddr));
-	return NF_ACCEPT;
+	memset(loc_ports, 0, sizeof(loc_ports));
+	memset(rem_ports, 0, sizeof(rem_ports));
+	memset(proc_list, 0, sizeof(proc_list));
 }
 
-static int __init procnet_init(void)
+static void write_results(void)
 {
-	nfin.hook     = hook_func_in;
-	nfin.hooknum  = NF_IP_LOCAL_IN;
-	nfin.pf       = PF_INET;
-	nfin.priority = NF_IP_PRI_FIRST;
+	int i;
+	for (i = 0; i < MAX_PORTS; i++){
+		if (loc_ports[i] > 1){
+			printk("loc %d : %d\n", i, loc_ports[i]);
+		}
+		if (rem_ports[i] > 1){
+			printk("rem %d : %d\n", i, rem_ports[i]);
+		}
+	}
 
-	nf_register_hook(&nfin);
+	//each proc -> += nb packets in/out
+
+}
+
+static enum hrtimer_restart timer_function(struct hrtimer * timer)
+{
+	//Pas refresh si pas new data
+
+	refresh_process();
+	write_results();
+	reset_var();
+
+	hrtimer_forward_now(timer, kt_periode);
+
+	return HRTIMER_RESTART;
+}
+
+static void timer_init(void)
+{
+	kt_periode = ktime_set(1, 0);
+	hrtimer_init (&htimer, CLOCK_REALTIME, HRTIMER_MODE_REL);
+	htimer.function = timer_function;
+	hrtimer_start(&htimer, kt_periode, HRTIMER_MODE_REL);
+}
+
+static void timer_cleanup(void)
+{
+	hrtimer_cancel(& htimer);
+}
+
+static int __init pnb_init(void)
+{
+	init_hook();
+	timer_init();
+
+	//kernel min version
 
 	return 0;
 }
 
-static void __exit procnet_cleanup(void)
+static void __exit pnb_cleanup(void)
 {
-	nf_unregister_hook(&nfin);
+	timer_cleanup();
+	clean_hook();
+	reset_var();
+
+	//clear static
 }
 
-module_init(procnet_init);
-module_exit(procnet_cleanup);
+module_init(pnb_init);
+module_exit(pnb_cleanup);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Biche");
+MODULE_DESCRIPTION("Network bandwidth stats per process");
