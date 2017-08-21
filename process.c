@@ -7,11 +7,6 @@
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 
-struct Process {
-	int loc_ports[SMALL_ARRAY_SIZE];
-	int rem_ports[SMALL_ARRAY_SIZE];
-};
-
 extern struct Process proc_list[MAX_PROC];
 
 static char * read_file(char * filename)
@@ -28,9 +23,7 @@ static char * read_file(char * filename)
 	f = filp_open(filename, O_RDONLY, 0);
 
 	if(f == NULL)
-	{
 		printk(KERN_ALERT "filp_open error!!.\n");
-	}
 	else
 	{
 		fs = get_fs();
@@ -44,7 +37,7 @@ static char * read_file(char * filename)
 	return buf;
 }
 
-static int * get_inodes_ports(void)
+static unsigned long * get_inodes_ports(void)
 {
 	char to_read[][30] = {
 		"/proc/net/tcp",
@@ -54,55 +47,46 @@ static int * get_inodes_ports(void)
 	};
 	int i;
 	int arr_size = sizeof(to_read);
-	int *inodes = kmalloc(GFP_KERNEL, sizeof(int) * MAX_PROC * arr_size);
+	unsigned long *inodes = kmalloc(sizeof(unsigned long) * MAX_PROC * arr_size, GFP_KERNEL);
+
+	if (!inodes)
+		return NULL;
 
 	for (i = 0; i < arr_size / sizeof(to_read[0]); i++){
 
 		char * res = read_file(to_read[i]);
 
-		//parse
+		//fscanf(fp, "%d %s %c %d %d %d %d %d %u %lu ...", &pid, &name, &ppid, &dummy, &dummy, &dummy, ...);
 	}
 
 	return inodes;
 }
 
 //TODO check /task/fd/
-static int * get_inodes_of_process(struct files_struct *current_files)
+static unsigned long * get_inodes_of_process(struct task_struct *proc)
 {
-	struct fdtable *files_table;
-	struct path files_path;
-	int *inodes = kmalloc(GFP_KERNEL, sizeof(int) * SMALL_ARRAY_SIZE * 2);
-	char *buf = (char *)kmalloc(GFP_KERNEL, 100 * sizeof(char));
+	unsigned long *inodes = kmalloc(sizeof(unsigned long) * SMALL_ARRAY_SIZE * 2, GFP_KERNEL);
 	int i = 0;
-	char *cwd;
 
-	files_table = files_fdtable(current_files);
+	if (!inodes)
+		return NULL;
 
-	while(files_table->fd[i] != NULL)
-	{
-		//filtre network
+	for (i = 0; i < proc->files->fdt->max_fds; i++)
+		inodes[i] = proc->files->fdt->fd[i]->f_path.dentry->d_inode->i_ino;
 
-		//A revoir
-		files_path = files_table->fd[i]->f_path;
-		cwd = d_path(&files_path, buf, 100 * sizeof(char));
-
-		printk(KERN_DEBUG "Open file with fd %d  %s", i, cwd);
-
-		i++;
-	}
 	return inodes;
 }
 
 static void refresh_process(void)
 {
-	//int * inodes_ports = get_inodes_ports();
+	//unsigned long * inodes_ports = get_inodes_ports();
 	struct task_struct *proc;
 
 	for_each_process(proc)
 	{
 		struct Process tmp;
 
-		int * proc_inodes = get_inodes_of_process(proc->files);
+		unsigned long * proc_inodes = get_inodes_of_process(proc);
 
 		proc_list[proc->pid] = tmp;
 	}

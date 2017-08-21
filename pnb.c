@@ -6,16 +6,9 @@
 #include <linux/hrtimer.h>
 #include <linux/sched.h>
 
-#define MAX_PORTS  65535
-#define MAX_PROC  32768
-#define SMALL_ARRAY_SIZE  250
-
+#include "pnb.h"
 #include "ports.c"
 #include "process.c"
-
-int loc_ports[MAX_PORTS];
-int rem_ports[MAX_PORTS];
-struct Process proc_list[MAX_PROC];
 
 static struct hrtimer htimer;
 static ktime_t kt_periode;
