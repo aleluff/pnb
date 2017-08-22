@@ -7,6 +7,13 @@ struct Process {
 	int rem_ports[SMALL_ARRAY_SIZE];
 };
 
+struct Inodes_ports {
+	long unsigned int ino;
+	int loc_port;
+	int rem_port;
+
+};
+
 int loc_ports[MAX_PORTS];
 int rem_ports[MAX_PORTS];
 struct Process proc_list[MAX_PROC];

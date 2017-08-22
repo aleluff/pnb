@@ -25,10 +25,10 @@ static void write_results(void)
 	int i;
 	for (i = 0; i < MAX_PORTS; i++){
 		if (loc_ports[i] > 1){
-			printk("loc %d : %d\n", i, loc_ports[i]);
+			//printk("loc %d : %d\n", i, loc_ports[i]);
 		}
 		if (rem_ports[i] > 1){
-			printk("rem %d : %d\n", i, rem_ports[i]);
+			//printk("rem %d : %d\n", i, rem_ports[i]);
 		}
 	}
 

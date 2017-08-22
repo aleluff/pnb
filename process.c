@@ -9,11 +9,13 @@
 
 extern struct Process proc_list[MAX_PROC];
 
-static char * read_file(char * filename)
+static char ** read_file(char * filename)
 {
 	struct file *f;
 	int buf_lgth = 3000;
-	char *buf = vmalloc(sizeof(char) * buf_lgth);
+	char *tok;
+	char *buf = kmalloc(sizeof(char) * buf_lgth, GFP_KERNEL);
+	char **list = kmalloc(sizeof(buf), GFP_KERNEL);
 	mm_segment_t fs;
 	int i;
 
@@ -32,61 +34,82 @@ static char * read_file(char * filename)
 		f->f_op->read(f, buf, buf_lgth, &f->f_pos);
 
 		set_fs(fs);
+		i = 0;
+
+		while ((tok = strsep(&buf, "\n"))) {
+			list[i++] = tok;
+		}
 	}
 	filp_close(f,NULL);
-	return buf;
+	return list;
 }
 
-static unsigned long * get_inodes_ports(void)
+static struct Inodes_ports * get_inodes_ports(void)
 {
+	struct Inodes_ports *list = kmalloc(sizeof(struct Inodes_ports) * MAX_PORTS, GFP_KERNEL);
+	struct Inodes_ports tmp;
 	char to_read[][30] = {
 		"/proc/net/tcp",
 		"/proc/net/tcp6",
 		"/proc/net/udp",
 		"/proc/net/udp6"
 	};
+	char * bs;
+	char ** res;
 	int i;
-	int arr_size = sizeof(to_read);
-	unsigned long *inodes = kmalloc(sizeof(unsigned long) * MAX_PROC * arr_size, GFP_KERNEL);
+	int y;
+	int z = 0;
 
-	if (!inodes)
+	if (!list)
 		return NULL;
 
-	for (i = 0; i < arr_size / sizeof(to_read[0]); i++){
+	for (i = 0; i < sizeof(to_read) / sizeof(to_read[0]); i++){
 
-		char * res = read_file(to_read[i]);
+		y = 1;
+		res = read_file(to_read[i]);
 
-		//fscanf(fp, "%d %s %c %d %d %d %d %d %u %lu ...", &pid, &name, &ppid, &dummy, &dummy, &dummy, ...);
+		while(res[y] != NULL){
+
+			sscanf(res[y], "%s: %s:%u %s:%u %s %s %s %s %s %s %s %u %s %s %s %s",
+		      		&bs, &bs, &tmp.loc_port, &bs, &tmp.rem_port, &bs, &bs, &bs, &bs, &bs, &bs, &tmp.ino, &bs, &bs, &bs, &bs);
+
+			list[z] = tmp;
+			y++;
+			z++;
+		}
 	}
 
-	return inodes;
+	return list;
 }
 
 //TODO check /task/fd/
-static unsigned long * get_inodes_of_process(struct task_struct *proc)
+static struct inode * get_inodes_of_process(struct task_struct *proc)
 {
-	unsigned long *inodes = kmalloc(sizeof(unsigned long) * SMALL_ARRAY_SIZE * 2, GFP_KERNEL);
+	struct inode *list = kmalloc(sizeof(struct inode) * SMALL_ARRAY_SIZE * 2, GFP_KERNEL);
+	struct inode test;
 	int i = 0;
 
-	if (!inodes)
+	if (!list)
 		return NULL;
 
-	for (i = 0; i < proc->files->fdt->max_fds; i++)
-		inodes[i] = proc->files->fdt->fd[i]->f_path.dentry->d_inode->i_ino;
+	for (i = 0; i < proc->files->fdt->max_fds; i++){
 
-	return inodes;
+		//list[i] = test;//proc->files->fdt->fd[i]->f_path.dentry->d_inode;
+	}
+
+	return list;
 }
 
 static void refresh_process(void)
 {
-	//unsigned long * inodes_ports = get_inodes_ports();
+	struct Inodes_ports * inodes_ports = get_inodes_ports();
 	struct task_struct *proc;
 
 	for_each_process(proc)
 	{
 		struct Process tmp;
 
-		unsigned long * proc_inodes = get_inodes_of_process(proc);
+		//struct inode * proc_inodes = get_inodes_of_process(proc);
 
 		proc_list[proc->pid] = tmp;
 	}
