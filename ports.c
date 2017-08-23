@@ -4,8 +4,8 @@
 #include <linux/netfilter_ipv6.h>
 #include <linux/vmalloc.h>
 
-extern int loc_ports[MAX_PORTS];
-extern int rem_ports[MAX_PORTS];
+extern unsigned int loc_ports[MAX_PORTS];
+extern unsigned int rem_ports[MAX_PORTS];
 
 static struct nf_hook_ops nfin;
 static struct nf_hook_ops nfout;

@@ -36,13 +36,29 @@ static void write_results(void)
 
 }
 
+static bool is_new_data(void)
+{
+	int i;
+	for (i = 0; i < MAX_PORTS; i++){
+		if (loc_ports[i] > 1){
+			return true;
+		}
+		if (rem_ports[i] > 1){
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static enum hrtimer_restart timer_function(struct hrtimer * timer)
 {
-	//Pas refresh si pas new data
-
-	refresh_process();
-	write_results();
-	reset_var();
+	//if (is_new_data())
+	{
+		refresh_process();
+		write_results();
+		reset_var();
+	}
 
 	hrtimer_forward_now(timer, kt_periode);
 
@@ -68,6 +84,8 @@ static int __init pnb_init(void)
 	timer_init();
 
 	//kernel min version
+	//clear static fct
+	//test limit array ex : +20port par proc
 
 	return 0;
 }
@@ -76,9 +94,6 @@ static void __exit pnb_cleanup(void)
 {
 	timer_cleanup();
 	clean_hook();
-	reset_var();
-
-	//clear static
 }
 
 module_init(pnb_init);
