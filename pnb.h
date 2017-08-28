@@ -16,3 +16,5 @@ struct Inodes_ports {
 unsigned int loc_ports[MAX_PORTS];
 unsigned int rem_ports[MAX_PORTS];
 struct Process proc_list[MAX_PROC];
+
+extern char ** read_file(char * filename);

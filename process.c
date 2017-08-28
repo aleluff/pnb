@@ -3,43 +3,6 @@
 
 extern struct Process proc_list[MAX_PROC];
 
-static char ** read_file(char * filename)
-{
-	struct file *f;
-	int buf_lgth = 3000;
-	char *tok;
-	char *buf = kmalloc(sizeof(char) * buf_lgth, GFP_KERNEL);
-	char **list = kmalloc(sizeof(buf), GFP_KERNEL);
-	//mm_segment_t fs;
-	int i;
-
-	for(i = 0; i < buf_lgth; i++)
-		buf[i] = 0;
-	i = 0;
-
-	//fs = get_fs();
-	//set_fs(get_ds());
-
-	f = filp_open(filename, O_RDONLY, 0);
-
-	//set_fs(fs);
-
-	if(f == NULL)
-		printk(KERN_ALERT "filp_open %s error!!.\n", filename);
-	else
-	{
-		f->f_op->read(f, buf, buf_lgth, &f->f_pos);
-
-		while ((tok = strsep(&buf, "\n"))) {
-			list[i++] = tok;
-		}
-
-		filp_close(f, NULL);
-	}
-
-	return list;
-}
-
 static struct Inodes_ports * get_inodes_ports(void)
 {
 	struct Inodes_ports *list = kmalloc(sizeof(struct Inodes_ports) * MAX_PORTS, GFP_KERNEL);
@@ -78,6 +41,9 @@ static struct Inodes_ports * get_inodes_ports(void)
 		}*/
 	}
 
+	kfree(res);
+	kfree(bs);
+
 	return list;
 }
 
@@ -106,6 +72,8 @@ static struct inode * get_inodes_of_process(struct task_struct *proc)
 	}
 
 	rcu_read_unlock();
+	kfree(fdt);
+	kfree(file);
 
 	return list;
 }
@@ -117,16 +85,15 @@ static void refresh_process(void)
 	struct Process tmp;
 	struct task_struct *proc;
 
-	//inodes_ports = get_inodes_ports();
+	inodes_ports = get_inodes_ports();
 
 	for_each_process(proc)
 	{
-		proc_inodes = get_inodes_of_process(proc);
+		//proc_inodes = get_inodes_of_process(proc);
 
 		proc_list[proc->pid] = tmp;
-
-		kfree(proc_inodes);
 	}
 
+	kfree(proc_inodes);
 	kfree(inodes_ports);
 }

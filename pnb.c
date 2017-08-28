@@ -2,6 +2,8 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 
+#include <linux/binfmts.h>
+#include <linux/fs.h>
 #include <linux/interrupt.h>
 #include <linux/hrtimer.h>
 #include <linux/sched.h>
@@ -12,6 +14,43 @@
 
 static struct hrtimer htimer;
 static ktime_t kt_periode;
+
+char ** read_file(char * filename)
+{
+	struct file *fp;
+	char *tok;
+	char *buf;
+	char **list;
+	int i;
+
+	printk(KERN_ALERT "%s\n", fp->f_op->read);
+	//fp = filp_open(filename, O_RDONLY, 0);
+
+	if(IS_ERR(fp))
+		printk(KERN_ALERT "filp_open %s error!!.\n", filename);
+	else
+	{
+		if(!(buf = kmalloc(BINPRM_BUF_SIZE, GFP_KERNEL))) {
+			printk(KERN_ALERT "KMALLOC");
+			return list;
+		}
+
+		//kernel_read(fp, 0, buf, BINPRM_BUF_SIZE);
+		//list = kmalloc(sizeof(buf), GFP_KERNEL);
+
+		//while ((tok = strsep(&buf, "\n"))) {
+		//	list[i++] = tok;
+		//}
+
+		//filp_close(fp, NULL);
+	}
+
+	kfree(buf);
+	kfree(tok);
+	kfree(fp);
+
+	return list;
+}
 
 static void reset_var(void)
 {
