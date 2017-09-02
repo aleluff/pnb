@@ -14,49 +14,14 @@
 
 static struct hrtimer htimer;
 static ktime_t kt_periode;
-
-char ** read_file(char * filename)
-{
-	struct file *fp;
-	char *tok;
-	char *buf;
-	char **list;
-	int i;
-
-	printk(KERN_ALERT "%s\n", fp->f_op->read);
-	//fp = filp_open(filename, O_RDONLY, 0);
-
-	if(IS_ERR(fp))
-		printk(KERN_ALERT "filp_open %s error!!.\n", filename);
-	else
-	{
-		if(!(buf = kmalloc(BINPRM_BUF_SIZE, GFP_KERNEL))) {
-			printk(KERN_ALERT "KMALLOC");
-			return list;
-		}
-
-		//kernel_read(fp, 0, buf, BINPRM_BUF_SIZE);
-		//list = kmalloc(sizeof(buf), GFP_KERNEL);
-
-		//while ((tok = strsep(&buf, "\n"))) {
-		//	list[i++] = tok;
-		//}
-
-		//filp_close(fp, NULL);
-	}
-
-	kfree(buf);
-	kfree(tok);
-	kfree(fp);
-
-	return list;
-}
+static struct file *fd_res;
 
 static void reset_var(void)
 {
 	memset(loc_ports, 0, sizeof(loc_ports));
 	memset(rem_ports, 0, sizeof(rem_ports));
-	memset(proc_list, 0, sizeof(proc_list));
+
+	proc_list = kmalloc(sizeof(struct Process), GFP_KERNEL);
 }
 
 static void write_results(void)
@@ -71,33 +36,50 @@ static void write_results(void)
 		}
 	}
 
-	//each proc -> += nb packets in/out
-
+//each proc -> += nb packets in/out
+// fd_res
 }
 
-static bool is_new_data(void)
+static void init_files(void)
 {
 	int i;
-	for (i = 0; i < MAX_PORTS; i++){
-		if (loc_ports[i] > 1){
-			return true;
-		}
-		if (rem_ports[i] > 1){
-			return true;
-		}
+
+	files_inodes = kmalloc(sizeof(struct file) * size_to_read, GFP_KERNEL);
+
+	for (i = 0; i < size_to_read; i++)
+	{
+		files_inodes[i] = filp_open(to_read[i], O_RDONLY, 0);
+
+		if(IS_ERR(files_inodes[i]))
+			goto err;
 	}
 
-	return false;
+	//TODO
+	fd_res = filp_open(file_res, O_CREAT | O_RDWR | O_APPEND, S_IRWXU);
+
+	if(IS_ERR(fd_res))
+			goto err;
+
+err:
+	printk(KERN_ALERT "filp_open error !\n");
+}
+
+static void clean_files(void)
+{
+	int i;
+
+	for (i = 0; i < size_to_read; i++)
+		filp_close(files_inodes[i], 0);
+
+	//unlink fd_res
+	filp_close(fd_res, 0);
 }
 
 static enum hrtimer_restart timer_function(struct hrtimer * timer)
 {
-	//if (is_new_data())
-	{
-		refresh_process();
-		write_results();
-		reset_var();
-	}
+	refresh_process();
+	write_results();
+	reset_var();
 
 	hrtimer_forward_now(timer, kt_periode);
 
@@ -119,12 +101,13 @@ static void timer_cleanup(void)
 
 static int __init pnb_init(void)
 {
+	reset_var();
+
+	init_files();
 	init_hook();
 	timer_init();
 
 	//kernel min version
-	//clear static fct
-	//test limit array ex : +20port par proc
 
 	return 0;
 }
@@ -133,6 +116,9 @@ static void __exit pnb_cleanup(void)
 {
 	timer_cleanup();
 	clean_hook();
+	clean_files();
+
+	kfree(proc_list);
 }
 
 module_init(pnb_init);

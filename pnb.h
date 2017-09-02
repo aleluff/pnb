@@ -1,20 +1,26 @@
-#define MAX_PORTS  65535
-#define MAX_PROC  32768
+#define MAX_PORTS 65535
 
 struct Process {
-	unsigned int loc_ports[1];
-	unsigned int rem_ports[1];
+	pid_t			pid;
+	unsigned int		loc_ports[500];
+	unsigned int		rem_ports[500];
+	struct Process *	next;
 };
 
-struct Inodes_ports {
-	long unsigned int ino;
-	unsigned int loc_port;
-	unsigned int rem_port;
-
+const char * file_res		= "/var/log/my_kern_module.log";//"/proc/net/bandwidth";
+const char to_read[][30]	=
+{
+	"/proc/net/tcp",
+	"/proc/net/tcp6",
+	"/proc/net/udp",
+	"/proc/net/udp6"
 };
+const int size_to_read		= sizeof(to_read) / sizeof(to_read[0]);
 
 unsigned int loc_ports[MAX_PORTS];
 unsigned int rem_ports[MAX_PORTS];
-struct Process proc_list[MAX_PROC];
 
-extern char ** read_file(char * filename);
+struct Process ** proc_list;
+struct file ** files_inodes;
+
+extern char * read_file(struct file * fp);
