@@ -10,7 +10,7 @@ extern unsigned int rem_ports[MAX_PORTS];
 static struct nf_hook_ops nfin;
 static struct nf_hook_ops nfout;
 
-static void set_port_size(int *ports, int port_num, int size)
+static void set_port_size(unsigned int *ports, int port_num, unsigned int size)
 {
 	ports[port_num] += size;
 }
@@ -20,7 +20,18 @@ static unsigned int hook_func_in(
 	struct sk_buff *skb,
 	const struct nf_hook_state *state)
 {
-	set_port_size(loc_ports, skb_transport_header(skb)[0], skb->len);
+	const struct iphdr *iph;
+	const struct tcphdr *th;
+	struct sock *sk = NULL;
+	struct tcp_sock *tp;
+
+	sk = __inet_lookup_established(dev_net(skb->dev), &tcp_hashinfo,
+		                           iph->saddr, th->source,
+		                           iph->daddr, ntohs(th->dest),
+		                           skb->skb_iif);
+
+
+	set_port_size(loc_ports, skb_transport_header(skb)[0], skb->data_len);
 
 	return NF_ACCEPT;
 }
@@ -30,7 +41,7 @@ static unsigned int hook_func_out(
 	struct sk_buff *skb,
 	const struct nf_hook_state *state)
 {
-	set_port_size(rem_ports, skb_transport_header(skb)[1], skb->len);
+	set_port_size(rem_ports, skb_transport_header(skb)[1], skb->data_len);
 
 	return NF_ACCEPT;
 }
@@ -38,7 +49,7 @@ static unsigned int hook_func_out(
 static void init_hook(void)
 {
 	nfin.hook     = hook_func_in;
-	nfin.hooknum  = NF_INET_LOCAL_IN;
+	nfin.hooknum  = NF_INET_POST_ROUTING;//NF_INET_LOCAL_IN;
 	nfin.pf       = PF_INET;
 	nfin.priority = NF_IP_PRI_FIRST;
 

@@ -1,5 +1,7 @@
 #define MAX_PORTS 65535
 
+#include <linux/proc_fs.h>
+
 struct Process {
 	pid_t			pid;
 	unsigned int		loc_ports[500];
@@ -7,7 +9,17 @@ struct Process {
 	struct Process *	next;
 };
 
-const char * file_res		= "/var/log/my_kern_module.log";//"/proc/net/bandwidth";
+struct struct_res {
+	const char *		name;
+	const char *		path;
+	struct file *		fd;
+};
+struct struct_res file_res 	=
+{
+	.name = "net_bdth",
+	.path = "/proc/net_bdth"
+
+};
 const char to_read[][30]	=
 {
 	"/proc/net/tcp",
@@ -17,10 +29,11 @@ const char to_read[][30]	=
 };
 const int size_to_read		= sizeof(to_read) / sizeof(to_read[0]);
 
+//gerer ->next
 unsigned int loc_ports[MAX_PORTS];
 unsigned int rem_ports[MAX_PORTS];
 
 struct Process ** proc_list;
 struct file ** files_inodes;
 
-extern char * read_file(struct file * fp);
+extern char ** read_file(struct file * fp);
